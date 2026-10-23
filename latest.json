@@ -1,28 +1,28 @@
 {
   "application": "local-vpn-switcher",
-  "version": "1.3.1",
-  "releaseUrl": "https://github.com/lihe3914-ship-it/local-vpn-switcher-downloads/releases/tag/v1.3.1",
+  "version": "1.3.2",
+  "releaseUrl": "https://github.com/lihe3914-ship-it/local-vpn-switcher-downloads/releases/tag/v1.3.2",
   "packages": [
     {
       "platform": "windows-x64",
-      "name": "local-vpn-switcher-1.3.1-windows-x64.zip",
-      "sha256": "6232caa6d85545520f22e58a678bb6764bc39aebdb565c2803f00e56f6c7350b",
-      "bytes": 34623589,
-      "url": "https://github.com/lihe3914-ship-it/local-vpn-switcher-downloads/releases/download/v1.3.1/local-vpn-switcher-1.3.1-windows-x64.zip"
+      "name": "local-vpn-switcher-1.3.2-windows-x64.zip",
+      "sha256": "eff81187a666d1f0aa882e59bf336415ddca6cd89ced65b99c3cbe83a08bebff",
+      "bytes": 34623577,
+      "url": "https://github.com/lihe3914-ship-it/local-vpn-switcher-downloads/releases/download/v1.3.2/local-vpn-switcher-1.3.2-windows-x64.zip"
     },
     {
       "platform": "macos-arm64",
-      "name": "local-vpn-switcher-1.3.1-macos-arm64.zip",
-      "sha256": "b79b59509c88d6d8badce19f6686b605f169a1dedd3b13ec57e913e24fdbf211",
-      "bytes": 39027575,
-      "url": "https://github.com/lihe3914-ship-it/local-vpn-switcher-downloads/releases/download/v1.3.1/local-vpn-switcher-1.3.1-macos-arm64.zip"
+      "name": "local-vpn-switcher-1.3.2-macos-arm64.zip",
+      "sha256": "24cab7aa27b108fe947104826925e4eb9eca5a49af7c082bea7954f0ad83805f",
+      "bytes": 39027566,
+      "url": "https://github.com/lihe3914-ship-it/local-vpn-switcher-downloads/releases/download/v1.3.2/local-vpn-switcher-1.3.2-macos-arm64.zip"
     },
     {
       "platform": "macos-x64",
-      "name": "local-vpn-switcher-1.3.1-macos-x64.zip",
-      "sha256": "b4e7d004165804b291beba57b991ccd6962c85327706abdbbf0417201c39d7bc",
-      "bytes": 40251179,
-      "url": "https://github.com/lihe3914-ship-it/local-vpn-switcher-downloads/releases/download/v1.3.1/local-vpn-switcher-1.3.1-macos-x64.zip"
+      "name": "local-vpn-switcher-1.3.2-macos-x64.zip",
+      "sha256": "e5711a1fddc7fc4abf6d38374672150c2ba722d9526bae9b93149165e0588976",
+      "bytes": 40251180,
+      "url": "https://github.com/lihe3914-ship-it/local-vpn-switcher-downloads/releases/download/v1.3.2/local-vpn-switcher-1.3.2-macos-x64.zip"
     }
   ]
 }
