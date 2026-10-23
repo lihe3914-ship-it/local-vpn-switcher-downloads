@@ -1,0 +1,80 @@
+name: Publish verified downloads
+on:
+  push:
+    branches: ['release/v*']
+permissions:
+  contents: write
+concurrency:
+  group: public-release
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate the staged payload
+        shell: python
+        run: |
+          import json, pathlib, hashlib, zipfile, re
+          root=pathlib.Path('release-assets')
+          meta=json.loads((root/'metadata.json').read_text())
+          version=meta['version']
+          assert re.fullmatch(r'\d+\.\d+\.\d+',version)
+          assert __import__('os').environ['GITHUB_REF']=='refs/heads/release/v'+version
+          assert len(meta['packages'])==3
+          assert {p['platform'] for p in meta['packages']}=={'windows-x64','macos-arm64','macos-x64'}
+          assert {p.name for p in root.iterdir()}=={p['name'] for p in meta['packages']}|{'metadata.json','latest.json','SHA256SUMS.txt','EULA.txt'}
+          assert hashlib.sha256((root/'EULA.txt').read_bytes()).hexdigest()==meta['eulaSha256']
+          common={'README.txt','EULA.txt','THIRD-PARTY-NOTICES.txt','build-info.json'}
+          for p in meta['packages']:
+            assert p['name']==f'local-vpn-switcher-{version}-{p["platform"]}.zip'
+            assert p['url']==f'https://github.com/lihe3914-ship-it/local-vpn-switcher-downloads/releases/download/v{version}/{p["name"]}'
+            blob=(root/p['name']).read_bytes()
+            assert len(blob)==p['bytes'] and hashlib.sha256(blob).hexdigest()==p['sha256']
+            with zipfile.ZipFile(root/p['name']) as z:
+              items=[e for e in z.infolist() if not e.is_dir()]
+              prefix=f'local-vpn-switcher-{version}-{p["platform"]}/' if all(e.filename.startswith(f'local-vpn-switcher-{version}-{p["platform"]}/') for e in items) else ''
+              files={e.filename[len(prefix):]:z.read(e) for e in items}
+              win=p['platform']=='windows-x64'
+              allowed=common|({'VPN-Switcher.exe','runtime/windows-helper.exe'} if win else {'VPN-Switcher','runtime/mac-proxy'})|{x+('.cmd' if win else '.command') for x in ['Install','Start','Stop','Uninstall']}
+              assert len(files)==len(items) and set(files)==allowed
+              info=json.loads(files['build-info.json'])
+              assert info['version']==version and info['format']=='sea-v8-bytecode'
+              assert set(f['path'] for f in info['files'])==set(files)-{'build-info.json'}
+              for f in info['files']: assert hashlib.sha256(files[f['path']]).hexdigest()==f['sha256']
+              assert files['EULA.txt']==(root/'EULA.txt').read_bytes()
+              for name,data in files.items():
+                assert not re.search(rb'(?:gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}|export class SwitchController|export async function createPreviewServer)',data),name
+          latest=json.loads((root/'latest.json').read_text())
+          assert latest['version']==version and latest['packages']==meta['packages']
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const fs=require('node:fs'),crypto=require('node:crypto');
+            const owner=context.repo.owner,repo=context.repo.repo;
+            if(owner!=='lihe3914-ship-it'||repo!=='local-vpn-switcher-downloads')throw new Error('Wrong public repository');
+            const meta=JSON.parse(fs.readFileSync('release-assets/metadata.json'));
+            const tag='v'+meta.version;
+            let release;
+            try{release=(await github.rest.repos.getReleaseByTag({owner,repo,tag})).data;}catch(e){if(e.status!==404)throw e;}
+            if(!release)release=(await github.rest.repos.createRelease({owner,repo,tag_name:tag,target_commitish:'main',name:tag+' · 个人使用版',body:meta.notes,draft:true})).data;
+            const names=[...meta.packages.map(p=>p.name),'SHA256SUMS.txt','EULA.txt','latest.json'];
+            const assets=(await github.rest.repos.listReleaseAssets({owner,repo,release_id:release.id,per_page:100})).data;
+            if(assets.some(a=>!names.includes(a.name)))throw new Error('Unexpected existing release asset');
+            for(const name of names){
+              const data=fs.readFileSync('release-assets/'+name),digest='sha256:'+crypto.createHash('sha256').update(data).digest('hex');
+              const old=assets.find(a=>a.name===name);
+              if(old){if(old.size!==data.length||old.digest!==digest)throw new Error('Published file differs: '+name);continue;}
+              await github.rest.repos.uploadReleaseAsset({owner,repo,release_id:release.id,name,data,headers:{'content-type':name.endsWith('.zip')?'application/zip':'application/octet-stream','content-length':data.length}});
+            }
+            await github.rest.repos.updateRelease({owner,repo,release_id:release.id,draft:false,make_latest:'true'});
+            const ref=(await github.rest.git.getRef({owner,repo,ref:'heads/main'})).data;
+            const commit=(await github.rest.git.getCommit({owner,repo,commit_sha:ref.object.sha})).data;
+            const tree=(await github.rest.git.createTree({owner,repo,base_tree:commit.tree.sha,tree:['latest.json','EULA.txt'].map(name=>({path:name,mode:'100644',type:'blob',content:fs.readFileSync('release-assets/'+name,'utf8')}))})).data;
+            const next=(await github.rest.git.createCommit({owner,repo,message:'Publish verified downloads '+tag,tree:tree.sha,parents:[ref.object.sha]})).data;
+            await github.rest.git.updateRef({owner,repo,ref:'heads/main',sha:next.sha});
+            await github.rest.git.deleteRef({owner,repo,ref:'heads/'+context.ref.replace('refs/heads/','')});
+            core.info('Published '+release.html_url);
